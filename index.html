@@ -268,6 +268,59 @@
 
         .loans .pay-btn { background: var(--gradient-warning); }
 
+        .history-section {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 10px;
+            background: #f1f3f5;
+            border-radius: 12px;
+        }
+
+        .history-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: white;
+            border-radius: 12px;
+            margin-top: 8px;
+        }
+
+        .history-content.expanded {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .history-table th, .history-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .clear-history-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 15px;
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+
         .step {
             background: linear-gradient(135deg, #f8f9fa, #e9ecef);
             border-radius: 20px;
@@ -480,7 +533,6 @@
                 <div id="loanForm" class="operation-form" style="display:none;"><input type="number" id="loanAmount" class="form-control" placeholder="Сумма"><input type="number" id="loanPercent" class="form-control" placeholder="Процент %" style="margin-top:10px"><button class="btn btn-success" id="loanBtn" style="margin-top:15px">Выдать кредит</button></div>
                 <div id="repayForm" class="operation-form" style="display:none;"><input type="number" id="repayLoanAmount" class="form-control" placeholder="Сумма погашения"><button class="btn btn-success" id="repayLoanBtn" style="margin-top:15px">Погасить</button></div>
 
-                <!-- ЗАРПЛАТА + НАДБАВКИ -->
                 <div id="salaryForm" class="operation-form" style="display:none;">
                     <div class="job-category"><div class="job-category-title"><i class="fas fa-briefcase"></i> Обычные работы (по документам)</div>
                         <div class="jobs-container" id="regularJobs"></div>
@@ -498,7 +550,6 @@
                         <input type="number" id="customSalary" class="form-control" placeholder="Например, 5000">
                     </div>
 
-                    <!-- Блок надбавок (тюнинг/класс) -->
                     <div id="allowancesContainer" class="allowance-panel" style="display:none; margin-top:20px;">
                         <div class="allowance-title">✨ Надбавки / Тюнинг ТС</div>
                         <div id="allowanceFields"></div>
@@ -514,17 +565,16 @@
 <div class="modal" id="passwordModal"><div class="modal-content"><h3><i class="fas fa-lock"></i> Пароль администратора</h3><input type="password" id="adminPassword" class="form-control"><div style="display:flex; gap:15px; margin-top:20px;"><button id="cancelPasswordBtn" class="btn">Отмена</button><button id="submitPasswordBtn" class="btn btn-primary">Вход</button></div></div></div>
 
 <script>
-    // -------------------------- ДАННЫЕ ПО ДОКУМЕНТАМ (скорректированы) ---------------------------------
+    // -------------------------- ДАННЫЕ ПО ДОКУМЕНТАМ ---------------------------------
     let clients = [
         { id:1, fullName:"Андрей Андреевич", passport:"22 55 414741", balance:20250, fines:7099, loans:5250, history:[] },
         { id:2, fullName:"Иван Иванович", passport:"33 66 123456", balance:15000, fines:0, loans:10000, history:[] }
     ];
 
-    // Обычные работы (согласно РАБОТЫ НОВАЯ СИСТЕМА!.docx)
     const jobs = [
         { name: "Шахта", salary: 300, type: "fixed", emoji: "⛏️", category:"regular" },
         { name: "Курьер", salary: { min:150, max:1350, perOrder:150, maxOrders:9 }, type:"variable", emoji:"🛵", category:"regular" },
-        { name: "Почта", salary: 800, type:"fixed", emoji:"📪", category:"regular", requirement:"стаж курьер ≥5д" },
+        { name: "Почта", salary: 800, type:"fixed", emoji:"📪", category:"regular" },
         { name: "Такси", salary: { perClient:250, maxClients:7, classBonus:{low:0, middle:300, high:600, business:1200} }, type:"taxi", emoji:"🚕", category:"regular" },
         { name: "Автобус", salary: 1500, type:"fixed", emoji:"🚌", category:"regular" },
         { name: "Мусоровоз", salary: 2800, type:"fixed", emoji:"🚮", category:"regular" },
@@ -532,7 +582,6 @@
         { name: "Дальнобойщик", salary: null, type:"custom", emoji:"🚛", category:"regular" }
     ];
 
-    // Госструктуры (по документу)
     const govJobs = [
         { organization:"ЕСС (Единая служба спасения)", emoji:"🚒", positions:[
             { name:"Водитель", salary:1500 },{ name:"Пожарный", salary:1800 },{ name:"Спасатель", salary:2200 },
@@ -549,17 +598,9 @@
         ]}
     ];
 
-    // Тюнинг-множители (из файла Тюнинг на ТС.docx)
-    const tuningMultipliers = {
-        "Такси": { music:1.2, tint1:1.3, tint2:1.4 },    // музыка, тонировка I/II
-        "Автобус": { vip:1.3, sound:1.4, climate:1.5 },
-        "Развозчик": { trunk:1.2, airSusp:1.5 },
-        "Дальнобойщик": { trunk:1.2, airSusp:1.5 }
-    };
-
     const ADMIN_PASSWORD = "121212";
     let selectedClientId = null, selectedOperation = null, selectedJob = null, selectedGovPosition = null;
-    let currentAllowanceMultiplier = 1, currentTaxiClassBonus = 0;
+    let currentTaxiClassBonus = 0;
 
     function saveLocal(){ localStorage.setItem('stabilityBankClients', JSON.stringify(clients)); }
     function loadLocal(){ const saved = localStorage.getItem('stabilityBankClients'); if(saved) clients = JSON.parse(saved); }
@@ -572,16 +613,53 @@
     function renderClients(){
         const container = document.getElementById('clientsList');
         if(!clients.length){ container.innerHTML='<div class="client-card" style="text-align:center">Нет клиентов</div>'; return; }
-        container.innerHTML = clients.map(c => `
-            <div class="client-card">
+        container.innerHTML = clients.map(c => {
+            // история в свёрнутом блоке
+            let historyHtml = `<div class="history-section"><div class="history-header" onclick="toggleHistory(${c.id})"><span>📜 История операций</span><i class="fas fa-chevron-down" id="historyIcon-${c.id}"></i></div><div class="history-content" id="historyContent-${c.id}">`;
+            if(c.history.length){
+                historyHtml += `<table class="history-table"><thead><tr><th>Дата</th><th>Сумма</th><th>Описание</th></tr></thead><tbody>${c.history.map(h=>`<tr><td>${h.date}</td><td class="${h.amount>0?'positive':'negative'}">${h.amount>0?'+':'-'}${Math.abs(h.amount)}₽</td><td>${h.description}</td></tr>`).join('')}</tbody></table>`;
+                historyHtml += `<button class="clear-history-btn" onclick="clearClientHistory(${c.id})"><i class="fas fa-trash-alt"></i> Очистить историю (админ-пароль)</button>`;
+            } else {
+                historyHtml += `<div class="no-history">История пуста</div>`;
+            }
+            historyHtml += `</div></div>`;
+            return `
+            <div class="client-card" id="client-${c.id}">
                 <div class="client-header"><div class="client-name"><div class="client-avatar">${c.fullName[0]}</div><div><h2>${c.fullName}</h2><div>📘 ${c.passport}</div></div></div></div>
                 <div class="client-balance">💰 ${formatCurrency(c.balance)}</div>
                 <div class="client-details">
                     <div class="fines"><h3>🚨 Штрафы</h3><div class="amount">${formatCurrency(c.fines)}</div><button class="pay-btn" onclick="payAllFines(${c.id})" ${c.fines===0||c.balance<c.fines?'disabled':''}>Погасить штрафы</button></div>
                     <div class="loans"><h3>🏦 Кредиты</h3><div class="amount">${formatCurrency(c.loans)}</div><button class="pay-btn" onclick="payAllLoans(${c.id})" ${c.loans===0||c.balance<c.loans?'disabled':''}>Погасить кредиты</button></div>
                 </div>
-                <details><summary>📜 История операций</summary>${c.history.map(h=>`<div>${h.date} | ${h.amount>0?'+':'-'}${Math.abs(h.amount)}₽ | ${h.description}</div>`).join('')||'Пусто'}</details>
-            </div>`).join('');
+                ${historyHtml}
+            </div>`;
+        }).join('');
+    }
+
+    function toggleHistory(clientId){
+        const content = document.getElementById(`historyContent-${clientId}`);
+        const icon = document.getElementById(`historyIcon-${clientId}`);
+        if(content.classList.contains('expanded')){
+            content.classList.remove('expanded');
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        } else {
+            content.classList.add('expanded');
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+        }
+    }
+
+    function clearClientHistory(clientId){
+        showPasswordModal(() => {
+            const client = clients.find(c => c.id === clientId);
+            if(client){
+                client.history = [];
+                saveLocal();
+                renderClients();
+                showAlert(`История клиента ${client.fullName} очищена`, 'success');
+            }
+        });
     }
 
     function updateClientSelect(){ const sel = document.getElementById('clientSelect'); sel.innerHTML='<option value="">-- Клиент --</option>'+clients.map(c=>`<option value="${c.id}">${c.fullName} (${c.passport})</option>`).join(''); }
@@ -593,7 +671,6 @@
     function processLoan(id,amt,perc,desc){ const c=clients.find(x=>x.id===id); if(c){ const total=amt+(amt*perc/100); c.loans+=total; c.balance+=amt; c.history.unshift({date:getDateTime(),amount:+amt,description:`${desc} ${perc}% (к возврату ${formatCurrency(total)})`}); saveLocal(); renderClients(); updateClientInfo(); showAlert(`💰 Кредит ${formatCurrency(amt)} под ${perc}%`,`success`);} }
     function processRepayLoan(id,amt){ const c=clients.find(x=>x.id===id); if(c && c.loans>0){ let pay=Math.min(amt,c.loans); if(c.balance>=pay){ c.balance-=pay; c.loans-=pay; c.history.unshift({date:getDateTime(),amount:-pay,description:`Погашение кредита`}); saveLocal(); renderClients(); updateClientInfo(); showAlert(`✅ Погашено ${formatCurrency(pay)}`,`success`);} else showAlert('Недостаточно средств','error');} else showAlert('Нет кредита','error'); }
 
-    // ---------- Зарплата + динамические надбавки (тюнинг/класс) ----------
     function buildAllowanceUI(jobName){
         const container = document.getElementById('allowanceFields');
         container.innerHTML = '';
@@ -605,7 +682,7 @@
                 <div><label><input type="checkbox" id="musicTuning"> Музыкальная система (×1.2)</label></div>
                 <div><label><input type="checkbox" id="tint1"> Тонировка I (×1.3)</label></div>
                 <div><label><input type="checkbox" id="tint2"> Тонировка II (×1.4)</label></div>
-                <small>⚠️ Множители суммируются (например 1.2+1.3=1.5, но по логике перемножаем? Документ: повышает в 1,2/1,3 раза. Используем перемножение)</small>
+                <small>⚠️ Множители перемножаются</small>
             `;
         } else if(jobName === 'Автобус'){
             container.innerHTML = `
@@ -632,14 +709,12 @@
 
     function calculateFinalSalary(job, ordersVal, customVal){
         let base = 0;
-        // базовый расчёт
         if(job.type === 'fixed') base = job.salary;
         else if(job.type === 'variable') base = job.salary.perOrder * ordersVal;
         else if(job.type === 'taxi'){
             const perClient = job.salary.perClient;
             const clientsCount = ordersVal;
             base = perClient * clientsCount;
-            // класс ТС надбавка
             const classSelect = document.getElementById('taxiClass');
             let classBonus = 0;
             if(classSelect){
@@ -647,15 +722,12 @@
                 if(val === 'middle') classBonus = 300;
                 else if(val === 'high') classBonus = 600;
                 else if(val === 'business') classBonus = 1200;
-                else classBonus = 0;
-                currentTaxiClassBonus = classBonus;
             }
-            base += currentTaxiClassBonus;
+            base += classBonus;
         }
         else if(job.type === 'custom') base = customVal;
         else if(selectedGovPosition) base = selectedGovPosition.salary;
 
-        // применение множителей тюнинга
         let multiplier = 1;
         if(job.name === 'Такси'){
             let music = document.getElementById('musicTuning')?.checked ? 1.2 : 1;
@@ -674,7 +746,6 @@
         return final > 0 ? final : 0;
     }
 
-    // инициализация выбора работ
     function initJobsSelection(){
         const regContainer = document.getElementById('regularJobs');
         const govContainer = document.getElementById('govJobsContainer');
@@ -692,7 +763,6 @@
                 document.getElementById('customSalaryContainer').style.display = 'none';
                 document.getElementById('allowancesContainer').style.display = 'none';
                 document.getElementById('salaryBtn').style.display = 'block';
-
                 if(job.type === 'variable' || job.type === 'taxi'){
                     document.getElementById('ordersContainer').style.display = 'block';
                     let maxVal = job.type==='variable'? job.salary.maxOrders : 7;
@@ -701,7 +771,6 @@
                 } else if(job.type === 'custom'){
                     document.getElementById('customSalaryContainer').style.display = 'block';
                 }
-                // показать блок надбавок если профессия подходит
                 if(['Такси','Автобус','Развозчик','Дальнобойщик'].includes(job.name)){
                     buildAllowanceUI(job.name);
                 } else {
@@ -744,9 +813,7 @@
         selectedOperation=null; selectedJob=null;
     }
 
-    // глобальные вызовы
     window.payAllFines = (id)=>{
-        if(!confirm('Подтвердите пароль')) return;
         showPasswordModal(()=>{
             const c=clients.find(x=>x.id===id); if(c && c.fines>0 && c.balance>=c.fines){ c.balance-=c.fines; c.history.unshift({date:getDateTime(),amount:-c.fines,description:'Погашение всех штрафов'}); c.fines=0; saveLocal(); renderClients(); updateClientInfo(); showAlert('Штрафы погашены','success');} else showAlert('Ошибка','error');
         });
@@ -756,6 +823,8 @@
             const c=clients.find(x=>x.id===id); if(c && c.loans>0 && c.balance>=c.loans){ c.balance-=c.loans; c.history.unshift({date:getDateTime(),amount:-c.loans,description:'Погашение всех кредитов'}); c.loans=0; saveLocal(); renderClients(); updateClientInfo(); showAlert('Кредиты погашены','success');} else showAlert('Недостаточно','error');
         });
     };
+    window.clearClientHistory = clearClientHistory;
+    window.toggleHistory = toggleHistory;
 
     function showPasswordModal(cb){ const modal=document.getElementById('passwordModal'); const inp=document.getElementById('adminPassword'); const sub=document.getElementById('submitPasswordBtn'); const can=document.getElementById('cancelPasswordBtn'); modal.style.display='flex'; const handler=()=>{ if(inp.value===ADMIN_PASSWORD){ modal.style.display='none'; cb(); } else showAlert('Неверный пароль','error'); inp.value=''; }; sub.onclick=handler; can.onclick=()=>modal.style.display='none'; }
 
