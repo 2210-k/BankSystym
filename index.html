@@ -565,23 +565,25 @@
 <div class="modal" id="passwordModal"><div class="modal-content"><h3><i class="fas fa-lock"></i> Пароль администратора</h3><input type="password" id="adminPassword" class="form-control"><div style="display:flex; gap:15px; margin-top:20px;"><button id="cancelPasswordBtn" class="btn">Отмена</button><button id="submitPasswordBtn" class="btn btn-primary">Вход</button></div></div></div>
 
 <script>
-    // -------------------------- ДАННЫЕ ПО ДОКУМЕНТАМ ---------------------------------
+    // -------------------------- ДАННЫЕ ПО ДОКУМЕНТАМ (ЗАРПЛАТЫ ПРИВЕДЕНЫ В СООТВЕТСТВИЕ С УТВЕРЖДЕННЫМИ) ---------------------------------
     let clients = [
         { id:1, fullName:"Андрей Андреевич", passport:"22 55 414741", balance:20250, fines:7099, loans:5250, history:[] },
         { id:2, fullName:"Иван Иванович", passport:"33 66 123456", balance:15000, fines:0, loans:10000, history:[] }
     ];
 
+    // ОБЫЧНЫЕ РАБОТЫ (зарплаты строго по документу)
     const jobs = [
         { name: "Шахта", salary: 300, type: "fixed", emoji: "⛏️", category:"regular" },
-        { name: "Курьер", salary: { min:150, max:1350, perOrder:150, maxOrders:9 }, type:"variable", emoji:"🛵", category:"regular" },
-        { name: "Почта", salary: 800, type:"fixed", emoji:"📪", category:"regular" },
-        { name: "Такси", salary: { perClient:250, maxClients:7, classBonus:{low:0, middle:300, high:600, business:1200} }, type:"taxi", emoji:"🚕", category:"regular" },
-        { name: "Автобус", salary: 1500, type:"fixed", emoji:"🚌", category:"regular" },
-        { name: "Мусоровоз", salary: 2800, type:"fixed", emoji:"🚮", category:"regular" },
-        { name: "Развозчик", salary: 2000, type:"fixed", emoji:"🚚", category:"regular" },
+        { name: "Курьер", salary: { perOrder: 80, maxOrders: 9 }, type:"variable", emoji:"🛵", category:"regular" },
+        { name: "Почта", salary: 1000, type:"fixed", emoji:"📪", category:"regular" },
+        { name: "Такси", salary: { perClient: 180, maxClients: 7, classBonus:{low:0, middle:300, high:600, business:1200} }, type:"taxi", emoji:"🚕", category:"regular" },
+        { name: "Автобус", salary: 1600, type:"fixed", emoji:"🚌", category:"regular" },
+        { name: "Мусоровоз", salary: 2700, type:"fixed", emoji:"🚮", category:"regular" },
+        { name: "Развозчик", salary: 1400, type:"fixed", emoji:"🚚", category:"regular" },
         { name: "Дальнобойщик", salary: null, type:"custom", emoji:"🚛", category:"regular" }
     ];
 
+    // ГОСУДАРСТВЕННЫЕ ОРГАНИЗАЦИИ (зарплаты по документу, для ВЧ добавлены 9 должностей)
     const govJobs = [
         { organization:"ЕСС (Единая служба спасения)", emoji:"🚒", positions:[
             { name:"Водитель", salary:1500 },{ name:"Пожарный", salary:1800 },{ name:"Спасатель", salary:2200 },
@@ -593,8 +595,16 @@
             { name:"Старшина", salary:2400 },{ name:"Прапорщик", salary:2700 },{ name:"Мл. лейтенант", salary:3000 },
             { name:"Лейтенант", salary:3300 },{ name:"Капитан", salary:3600 },{ name:"Майор", salary:3900 },{ name:"Подполковник", salary:4200 }
         ]},
-        { organization:"ВЧ (Армия)", emoji:"🎖️", positions:[
-            { name:"Рядовой", salary:500 },{ name:"Ефрейтор", salary:800 },{ name:"Мл. сержант", salary:1100 }
+        { organization:"Воинская часть (по призыву)", emoji:"🎖️", positions:[
+            { name:"Рядовой", salary:500 },
+            { name:"Ефрейтор", salary:800 },
+            { name:"Мл. сержант", salary:1100 },
+            { name:"Сержант", salary:2000 },
+            { name:"Ст. сержант", salary:2300 },
+            { name:"Старшина", salary:2600 },
+            { name:"Прапорщик", salary:2900 },
+            { name:"Мл. лейтенант", salary:3200 },
+            { name:"Лейтенант", salary:3500 }
         ]}
     ];
 
@@ -614,7 +624,6 @@
         const container = document.getElementById('clientsList');
         if(!clients.length){ container.innerHTML='<div class="client-card" style="text-align:center">Нет клиентов</div>'; return; }
         container.innerHTML = clients.map(c => {
-            // история в свёрнутом блоке
             let historyHtml = `<div class="history-section"><div class="history-header" onclick="toggleHistory(${c.id})"><span>📜 История операций</span><i class="fas fa-chevron-down" id="historyIcon-${c.id}"></i></div><div class="history-content" id="historyContent-${c.id}">`;
             if(c.history.length){
                 historyHtml += `<table class="history-table"><thead><tr><th>Дата</th><th>Сумма</th><th>Описание</th></tr></thead><tbody>${c.history.map(h=>`<tr><td>${h.date}</td><td class="${h.amount>0?'positive':'negative'}">${h.amount>0?'+':'-'}${Math.abs(h.amount)}₽</td><td>${h.description}</td></tr>`).join('')}</tbody></table>`;
@@ -749,7 +758,16 @@
     function initJobsSelection(){
         const regContainer = document.getElementById('regularJobs');
         const govContainer = document.getElementById('govJobsContainer');
-        regContainer.innerHTML = jobs.map(j=>`<div class="job-item" data-job='${JSON.stringify(j)}'><div class="job-emoji">${j.emoji}</div><div class="job-name">${j.name}</div><div class="job-salary">${j.type==='fixed'?j.salary+'₽':j.type==='taxi'?'250-1750₽ + класс/тюнинг':'по договору'}</div></div>`).join('');
+        // Обновлённые строки с отображением зарплат по документу
+        regContainer.innerHTML = jobs.map(j=>{
+            let salaryDisplay = '';
+            if(j.type==='fixed') salaryDisplay = j.salary+'₽';
+            else if(j.name==='Курьер') salaryDisplay = '80–720₽ (за заказ)';
+            else if(j.name==='Такси') salaryDisplay = '180–1260₽ + класс/тюнинг';
+            else if(j.name==='Дальнобойщик') salaryDisplay = 'Контракт (до 10000+)';
+            else salaryDisplay = 'переменная';
+            return `<div class="job-item" data-job='${JSON.stringify(j)}'><div class="job-emoji">${j.emoji}</div><div class="job-name">${j.name}</div><div class="job-salary">${salaryDisplay}</div></div>`;
+        }).join('');
         govContainer.innerHTML = govJobs.map(org=>`<div class="job-item" data-org='${JSON.stringify(org)}'><div class="job-emoji">${org.emoji}</div><div class="job-name">${org.organization}</div><div class="job-salary">${org.positions.length} должностей</div></div>`).join('');
 
         document.querySelectorAll('#regularJobs .job-item').forEach(el=>{
